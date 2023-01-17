@@ -1,0 +1,361 @@
+-- in.cue --
+node1: string
+node2: string | *int
+node3: *"foo" | "bar" | "baz"
+node4: node3 | node2
+node5: {
+	inner: string
+	n3: node3
+}
+
+n1: node3
+n2: node2 | node3
+n3: node2 | node3 | *"bar"
+n3has: node3 | *"bar"
+n3new: node3 | *"bix"
+n3l: "foo" | *"bar" | "baz"
+listlit: [("foo" | "bar" | "boink"), ...("foo" | *"bar" | "baz")]
+lst: [...node3] | *listlit | node5
+
+-- out/exprtree/node1 --
+(string)
+-- out/exprtree/node2 --
+[|]  (int|string)
+├── (string)
+├── (int)
+└── [*]  
+    └── (int)
+-- out/exprtree/node3 --
+[|]  (string)
+├── "foo"
+├── "bar"
+├── "baz"
+└── [*]  
+    └── "foo"
+-- out/exprtree/node4 --
+[|]  (int|string)
+├── [.]  (string)
+│   ├── (struct)
+│   ├── "node3"
+│   ├── [ref:node3]  
+│   │   └── [|]  (string)
+│   │       ├── "foo"
+│   │       ├── "bar"
+│   │       ├── "baz"
+│   │       └── [*]  
+│   │           └── "foo"
+│   └── [*]  
+│       └── [.]  "foo"
+│           ├── (struct)
+│           ├── "node3"
+│           └── [ref:node3]  
+│               └── [|]  (string)
+│                   ├── "foo"
+│                   ├── "bar"
+│                   ├── "baz"
+│                   └── [*]  
+│                       └── "foo"
+├── [.]  (int|string)
+│   ├── (struct)
+│   ├── "node2"
+│   ├── [ref:node2]  
+│   │   └── [|]  (int|string)
+│   │       ├── (string)
+│   │       ├── (int)
+│   │       └── [*]  
+│   │           └── (int)
+│   └── [*]  
+│       └── [.]  (int)
+│           ├── (struct)
+│           ├── "node2"
+│           └── [ref:node2]  
+│               └── [|]  (int|string)
+│                   ├── (string)
+│                   ├── (int)
+│                   └── [*]  
+│                       └── (int)
+└── [*]  
+    └── [|]  (int|string)
+        ├── [.]  (string)
+        │   ├── (struct)
+        │   ├── "node3"
+        │   ├── [ref:node3]  
+        │   │   └── [|]  (string)
+        │   │       ├── "foo"
+        │   │       ├── "bar"
+        │   │       ├── "baz"
+        │   │       └── [*]  
+        │   │           └── "foo"
+        │   └── [*]  
+        │       └── [.]  "foo"
+        │           ├── (struct)
+        │           ├── "node3"
+        │           └── [ref:node3]  
+        │               └── [|]  (string)
+        │                   ├── "foo"
+        │                   ├── "bar"
+        │                   ├── "baz"
+        │                   └── [*]  
+        │                       └── "foo"
+        └── [.]  (int|string)
+            ├── (struct)
+            ├── "node2"
+            ├── [ref:node2]  
+            │   └── [|]  (int|string)
+            │       ├── (string)
+            │       ├── (int)
+            │       └── [*]  
+            │           └── (int)
+            └── [*]  
+                └── [.]  (int)
+                    ├── (struct)
+                    ├── "node2"
+                    └── [ref:node2]  
+                        └── [|]  (int|string)
+                            ├── (string)
+                            ├── (int)
+                            └── [*]  
+                                └── (int)
+-- out/exprtree/node5 --
+(struct)
+-- out/exprtree/n1 --
+[.]  (string)
+├── (struct)
+├── "node3"
+├── [ref:node3]  
+│   └── [|]  (string)
+│       ├── "foo"
+│       ├── "bar"
+│       ├── "baz"
+│       └── [*]  
+│           └── "foo"
+└── [*]  
+    └── [.]  "foo"
+        ├── (struct)
+        ├── "node3"
+        └── [ref:node3]  
+            └── [|]  (string)
+                ├── "foo"
+                ├── "bar"
+                ├── "baz"
+                └── [*]  
+                    └── "foo"
+-- out/exprtree/n2 --
+[|]  (int|string)
+├── [.]  (int|string)
+│   ├── (struct)
+│   ├── "node2"
+│   ├── [ref:node2]  
+│   │   └── [|]  (int|string)
+│   │       ├── (string)
+│   │       ├── (int)
+│   │       └── [*]  
+│   │           └── (int)
+│   └── [*]  
+│       └── [.]  (int)
+│           ├── (struct)
+│           ├── "node2"
+│           └── [ref:node2]  
+│               └── [|]  (int|string)
+│                   ├── (string)
+│                   ├── (int)
+│                   └── [*]  
+│                       └── (int)
+├── [.]  (string)
+│   ├── (struct)
+│   ├── "node3"
+│   ├── [ref:node3]  
+│   │   └── [|]  (string)
+│   │       ├── "foo"
+│   │       ├── "bar"
+│   │       ├── "baz"
+│   │       └── [*]  
+│   │           └── "foo"
+│   └── [*]  
+│       └── [.]  "foo"
+│           ├── (struct)
+│           ├── "node3"
+│           └── [ref:node3]  
+│               └── [|]  (string)
+│                   ├── "foo"
+│                   ├── "bar"
+│                   ├── "baz"
+│                   └── [*]  
+│                       └── "foo"
+└── [*]  
+    └── [|]  (int|string)
+        ├── [.]  (int|string)
+        │   ├── (struct)
+        │   ├── "node2"
+        │   ├── [ref:node2]  
+        │   │   └── [|]  (int|string)
+        │   │       ├── (string)
+        │   │       ├── (int)
+        │   │       └── [*]  
+        │   │           └── (int)
+        │   └── [*]  
+        │       └── [.]  (int)
+        │           ├── (struct)
+        │           ├── "node2"
+        │           └── [ref:node2]  
+        │               └── [|]  (int|string)
+        │                   ├── (string)
+        │                   ├── (int)
+        │                   └── [*]  
+        │                       └── (int)
+        └── [.]  (string)
+            ├── (struct)
+            ├── "node3"
+            ├── [ref:node3]  
+            │   └── [|]  (string)
+            │       ├── "foo"
+            │       ├── "bar"
+            │       ├── "baz"
+            │       └── [*]  
+            │           └── "foo"
+            └── [*]  
+                └── [.]  "foo"
+                    ├── (struct)
+                    ├── "node3"
+                    └── [ref:node3]  
+                        └── [|]  (string)
+                            ├── "foo"
+                            ├── "bar"
+                            ├── "baz"
+                            └── [*]  
+                                └── "foo"
+-- out/exprtree/n3 --
+[|]  (int|string)
+├── [.]  (int|string)
+│   ├── (struct)
+│   ├── "node2"
+│   ├── [ref:node2]  
+│   │   └── [|]  (int|string)
+│   │       ├── (string)
+│   │       ├── (int)
+│   │       └── [*]  
+│   │           └── (int)
+│   └── [*]  
+│       └── [.]  (int)
+│           ├── (struct)
+│           ├── "node2"
+│           └── [ref:node2]  
+│               └── [|]  (int|string)
+│                   ├── (string)
+│                   ├── (int)
+│                   └── [*]  
+│                       └── (int)
+├── [.]  (string)
+│   ├── (struct)
+│   ├── "node3"
+│   ├── [ref:node3]  
+│   │   └── [|]  (string)
+│   │       ├── "foo"
+│   │       ├── "bar"
+│   │       ├── "baz"
+│   │       └── [*]  
+│   │           └── "foo"
+│   └── [*]  
+│       └── [.]  "foo"
+│           ├── (struct)
+│           ├── "node3"
+│           └── [ref:node3]  
+│               └── [|]  (string)
+│                   ├── "foo"
+│                   ├── "bar"
+│                   ├── "baz"
+│                   └── [*]  
+│                       └── "foo"
+├── "bar"
+└── [*]  
+    └── "bar"
+-- out/exprtree/n3has --
+[|]  (string)
+├── [.]  (string)
+│   ├── (struct)
+│   ├── "node3"
+│   ├── [ref:node3]  
+│   │   └── [|]  (string)
+│   │       ├── "foo"
+│   │       ├── "bar"
+│   │       ├── "baz"
+│   │       └── [*]  
+│   │           └── "foo"
+│   └── [*]  
+│       └── [.]  "foo"
+│           ├── (struct)
+│           ├── "node3"
+│           └── [ref:node3]  
+│               └── [|]  (string)
+│                   ├── "foo"
+│                   ├── "bar"
+│                   ├── "baz"
+│                   └── [*]  
+│                       └── "foo"
+├── "bar"
+└── [*]  
+    └── "bar"
+-- out/exprtree/n3new --
+[|]  (string)
+├── [.]  (string)
+│   ├── (struct)
+│   ├── "node3"
+│   ├── [ref:node3]  
+│   │   └── [|]  (string)
+│   │       ├── "foo"
+│   │       ├── "bar"
+│   │       ├── "baz"
+│   │       └── [*]  
+│   │           └── "foo"
+│   └── [*]  
+│       └── [.]  "foo"
+│           ├── (struct)
+│           ├── "node3"
+│           └── [ref:node3]  
+│               └── [|]  (string)
+│                   ├── "foo"
+│                   ├── "bar"
+│                   ├── "baz"
+│                   └── [*]  
+│                       └── "foo"
+├── "bix"
+└── [*]  
+    └── "bix"
+-- out/exprtree/n3l --
+[|]  (string)
+├── "foo"
+├── "bar"
+├── "baz"
+└── [*]  
+    └── "bar"
+-- out/exprtree/listlit --
+(clist)
+-- out/exprtree/lst --
+[|]  (list|struct)
+├── (clist)
+├── [.]  (clist)
+│   ├── (struct)
+│   ├── "listlit"
+│   └── [ref:listlit]  
+│       └── (clist)
+├── [.]  (struct)
+│   ├── (struct)
+│   ├── "node5"
+│   └── [ref:node5]  
+│       └── (struct)
+└── [*]  
+    └── [.]  (olist)
+        ├── (struct)
+        ├── "listlit"
+        └── [ref:listlit]  
+            └── (clist)
+-- out/exprtree/zoom --
+(struct)
+-- out/exprtree/ref --
+[&]  (struct)
+├── [.]  (struct)
+│   ├── (struct)
+│   ├── "zoom"
+│   └── [Ref:zoom]  
+│       └── (struct)
+└── (struct)

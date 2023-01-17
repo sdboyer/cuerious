@@ -3,7 +3,8 @@ package cuerious
 import (
 	"bytes"
 	"fmt"
-	"math/bits"
+	"sort"
+	"strings"
 
 	"cuelang.org/go/cue"
 	"github.com/xlab/treeprint"
@@ -11,7 +12,7 @@ import (
 
 // ExprNode is the node element from which an ExprTree is constructed.
 //
-// Each ExprNode which corresponds to exactly one [cue.Value], stored in ExprNode.self.
+// Each ExprNode which corresponds to exactly one [cue.Value], stored in ExprNode.Self.
 // ExprNodes contain connections to each other through one of three types of links:
 //   - Expr link: the child is one element of a larger CUE expression represented by the
 //     parent (returns from [cue.Value.Expr] on parent).
@@ -24,12 +25,12 @@ type ExprNode struct {
 	//   - Is the return from calling cue.Dereference() on the parent cue.Value
 	parent *ExprNode
 	// The cue.Value of this node in the expression tree.
-	self cue.Value
+	Self cue.Value
 
-	// The op produced from calling Expr() on self.
+	// The op produced from calling Expr() on Self.
 	// TODO remove, can just call Expr
 	op cue.Op
-	// Child nodes returned from calling self.Expr()
+	// Child nodes returned from calling Self.Expr()
 	children []*ExprNode
 
 	// The default value for this node. nil if there is no default.
@@ -37,7 +38,7 @@ type ExprNode struct {
 	// Indicator that the node is attached to the tree through a default link.
 	fromDefault bool
 
-	// The underlying value to which self is a reference. nil if self is not a reference.
+	// The underlying value to which Self is a reference. nil if Self is not a reference.
 	ref *ExprNode
 	// Path to the referenced value
 	// TODO remove, can just call ReferencePath
@@ -45,65 +46,69 @@ type ExprNode struct {
 	// Indicator that this ExprNode is part of the tree through a reference edge
 	fromDeref bool
 
-	depth int
-}
-
-type arc struct {
-	Parent, Child *ExprNode
+	// Internal traacker of the universe of known cue.Value in this whole tree/graph.
+	m map[cue.Value]*ExprNode
 }
 
 // ExprTree constructs a tree-ish of nodes representing the expression structure
 // contained within the provided [cue.Value].
 //
 // ExprTree is represented as a set of interlinked pointers to ExprNode, each of
-// which corresponds to exactly one [cue.Value], ExprNode.Self. ExprNodes are connected through
-// one of three types of links:
+// which corresponds to exactly one [cue.Value], ExprNode.Self. ExprNodes are
+// connected through one of three types of links:
 //   - Expr links, where calling [cue.Value.Expr] on the
 //   - Dereference links, where the parentl
 //
 // Structural CUE elements - like the fields of structs - are NOT represented in
 // this tree.
 //
+// An ExprNode structure is NOT currently safe for use from multiple goroutines.
+//
 // Returns nil if the provided value contains structural cycles.
 func ExprTree(v cue.Value) *ExprNode {
 	if v.Validate(cue.DisallowCycles(true)) != nil {
 		return nil
 	}
-	return exprTree(v, -1)
+	return exprTree(v, make(map[cue.Value]*ExprNode))
 }
 
-func exprTree(v cue.Value, depth int) *ExprNode {
+func exprTree(v cue.Value, m map[cue.Value]*ExprNode) *ExprNode {
+	if n, has := m[v]; has {
+		return n
+	}
+
 	op, args := v.Expr()
-	dv, has := v.Default()
+	dv, hasDef := v.Default()
 	_, path := v.ReferencePath()
 
 	n := &ExprNode{
-		op:    op,
-		self:  v,
-		depth: depth + 1,
+		op:   op,
+		Self: v,
 	}
 
 	var doargs, dodefault bool
 	switch v.IncompleteKind() {
 	case cue.ListKind:
-		dodefault = has && !v.Equals(dv)
+		dodefault = hasDef && !v.Equals(dv)
 		doargs = op != cue.NoOp || dodefault
 	case cue.StructKind:
-		doargs = op != cue.NoOp || has
-		dodefault = has
+		doargs = op != cue.NoOp || hasDef
+		dodefault = hasDef
 	default:
-		doargs = op != cue.NoOp || has
-		dodefault = has
+		if len(path.Selectors()) == 0 {
+			doargs = op != cue.NoOp || hasDef
+			dodefault = hasDef
+		}
 	}
 
 	if dodefault {
-		n.dfault = exprTree(dv, n.depth)
+		n.dfault = exprTree(dv, n.m)
 		n.dfault.parent = n
 		n.dfault.fromDefault = true
 	}
 
 	if len(path.Selectors()) > 0 {
-		n.ref = exprTree(cue.Dereference(v), n.depth)
+		n.ref = exprTree(cue.Dereference(v), n.m)
 		n.refpath = path
 		n.ref.parent = n
 		n.ref.fromDeref = true
@@ -111,10 +116,13 @@ func exprTree(v cue.Value, depth int) *ExprNode {
 
 	if doargs {
 		for _, cv := range args {
-			cn := exprTree(cv, n.depth)
+			cn := exprTree(cv, n.m)
 			cn.parent = n
 			n.children = append(n.children, cn)
 		}
+		sort.Slice(n.children, func(i, j int) bool {
+			return n.children[i].op < n.children[j].op
+		})
 	}
 
 	return n
@@ -141,7 +149,7 @@ func (n *ExprNode) Walk(fn func(x *ExprNode) bool) {
 }
 
 func (n *ExprNode) String() string {
-	tp := treeprint.NewWithRoot(n.printSelf())
+	tp := treeprint.NewWithRoot(n.selfString())
 	n.treeprint(tp)
 	return tp.String()
 }
@@ -149,7 +157,8 @@ func (n *ExprNode) String() string {
 func (n *ExprNode) treeprint(tp treeprint.Tree) {
 	if n.isLeaf() {
 		if !n.isRoot() {
-			tp.AddNode(n.printSelf())
+			tp.AddNode(n.selfString())
+			// tp.AddMetaNode(n.opString(), n.selfString())
 		}
 		return
 	}
@@ -159,28 +168,44 @@ func (n *ExprNode) treeprint(tp treeprint.Tree) {
 		b = tp
 		tp.SetMetaValue(n.opString())
 	} else {
-		b = tp.AddMetaBranch(n.opString(), n.printSelf())
-	}
-
-	for _, cn := range n.children {
-		cn.treeprint(b)
-	}
-	if n.ref != nil {
-		// n.ref.treeprint(b.AddMetaBranch(fmt.Sprintf("ref:%s", n.refpath), n.ref.kindStr()))
-		n.ref.treeprint(b.AddMetaBranch(fmt.Sprintf("ref:%s", n.refpath), ""))
+		b = tp.AddMetaBranch(n.opString(), n.selfString())
 	}
 
 	if n.dfault != nil {
-		n.dfault.treeprint(b.AddMetaBranch("*", ""))
+		// n.dfault.treeprint(b.AddMetaBranch("*", ""))
+		n.dfault.treeprint(b)
+	}
+	if n.ref != nil {
+		// n.ref.treeprint(b.AddMetaBranch(fmt.Sprintf("ref:%s", n.refpath), n.ref.kindStr()))
+		// n.ref.treeprint(tp.AddMetaBranch(fmt.Sprintf("ref:%s", n.refpath), ""))
+		// n.ref.treeprint(b.AddMetaBranch("<ref>", n.refpath.String()))
+		n.ref.treeprint(b)
+	}
+	for _, cn := range n.children {
+		cn.treeprint(b)
 	}
 }
 
-func (n *ExprNode) printSelf() string {
-	return fmt.Sprintf("%s%s", n.kindStr(), n.attrStr())
+func (n *ExprNode) selfString() string {
+	strs := make([]string, 0, 3)
+	for _, str := range []string{n.valStr(), n.kindStr(), n.attrStr()} {
+		if len(str) > 0 {
+			strs = append(strs, str)
+		}
+	}
+
+	return strings.Join(strs, " ")
 }
 
 func (n *ExprNode) opString() string {
-	return n.op.String()
+	switch {
+	case n.ref != nil:
+		return "ref"
+	case n.dfault != nil:
+		return "*"
+	default:
+		return n.op.String()
+	}
 }
 
 func (n *ExprNode) isRoot() bool {
@@ -191,34 +216,87 @@ func (n *ExprNode) isLeaf() bool {
 	return n.ref == nil && n.dfault == nil && len(n.children) == 0
 }
 
-func (n *ExprNode) kindStr() string {
-	switch n.self.Kind() {
-	case cue.BottomKind, cue.StructKind, cue.ListKind:
-		ik := n.self.IncompleteKind()
-		if bits.OnesCount16(uint16(ik)) != 1 {
-			return ik.String()
-		}
-		if ik != cue.ListKind {
-			return fmt.Sprintf("(%s)", ik.String())
-		}
-
-		l := n.self.Len()
-		if l.IsConcrete() {
-			return "(olist)"
-		} else {
-			return "(clist)"
-		}
-	default:
-		str := fmt.Sprint(n.self)
-		if len(str) < 12 {
-			return str
-		}
-		return str[:12] + "..."
+func (n *ExprNode) valStr() string {
+	b := new(strings.Builder)
+	if n.fromDefault {
+		fmt.Fprint(b, "*")
 	}
+
+	switch {
+	case n.ref != nil:
+		fmt.Fprint(b, n.refpath.String())
+	case n.dfault != nil:
+		return ""
+	default:
+		switch n.Self.Kind() {
+		case cue.BottomKind:
+			// Ugh, Kind() of a list with non-concrete elements is bottom
+			if n.Self.IncompleteKind() != cue.ListKind {
+				return ""
+			}
+			fallthrough
+		case cue.ListKind:
+			fmt.Fprintf(b, "[%s]", strings.TrimPrefix(fmt.Sprint(n.Self.Len()), "int & "))
+		case cue.StructKind:
+			fmt.Fprint(b, "{")
+			// TODO Len()'s docs say it reports a value for structs, but apparently not?
+			// fmt.Fprint(b, n.Self.Len())
+			if n.Self.Allows(cue.AnyString) {
+				fmt.Fprint(b, "...")
+			}
+			fmt.Fprint(b, "}")
+		default:
+			str := fmt.Sprint(n.Self)
+			if len(str) > 12 {
+				str = str[:12] + "..."
+			}
+			fmt.Fprint(b, str)
+		}
+	}
+
+	return b.String()
+}
+
+func (n *ExprNode) kindStr() string {
+	var v cue.Value
+	switch {
+	case n.ref != nil:
+		v = n.ref.Self
+	case n.dfault != nil:
+		v = n.dfault.Self
+	default:
+		v = n.Self
+	}
+
+	var pk func(pv cue.Value) string
+	pk = func(pv cue.Value) string {
+		b := new(strings.Builder)
+		switch ik := pv.IncompleteKind(); ik {
+		default:
+			return fmt.Sprintf("<%s>", ik)
+		case cue.StructKind:
+			// fmt.Fprintf(b, "<%s%s>", ik, pk(pv.LookupPath(cue.MakePath(cue.AnyString))))
+			fmt.Fprintf(b, "<%s", ik)
+			if av := pv.LookupPath(cue.MakePath(cue.AnyString)); av.Exists() {
+				fmt.Fprint(b, pk(av))
+			}
+			fmt.Fprint(b, ">")
+		case cue.ListKind:
+			// fmt.Fprintf(b, "<%s%s>", ik, pk(pv.LookupPath(cue.MakePath(cue.AnyIndex))))
+			fmt.Fprintf(b, "<%s", ik)
+			if av := pv.LookupPath(cue.MakePath(cue.AnyIndex)); av.Exists() {
+				fmt.Fprint(b, pk(av))
+			}
+			fmt.Fprint(b, ">")
+		}
+		return b.String()
+	}
+
+	return pk(v)
 }
 
 func (n *ExprNode) attrStr() string {
-	attrs := n.self.Attributes(cue.ValueAttr)
+	attrs := n.Self.Attributes(cue.ValueAttr)
 	var buf bytes.Buffer
 	for _, attr := range attrs {
 		fmt.Fprintf(&buf, " @%s(%s)", attr.Name(), attr.Contents())
