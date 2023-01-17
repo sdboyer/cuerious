@@ -1,0 +1,50 @@
+-- in.cue --
+emptystruct: {}
+nonemptystruct: {
+    foo: string
+}
+closestruct: close({})
+#def: {}
+tmplstruct: [string]: int
+tmplstruct2: [string]: close({})
+
+-- out/exprtree/emptystruct --
+emptystruct: {}
+
+{...} <struct>
+
+
+-- out/exprtree/nonemptystruct --
+nonemptystruct: {
+	foo: string
+}
+
+{...} <struct>
+
+
+-- out/exprtree/closestruct --
+closestruct: close({})
+
+[()]  {} <struct>
+├── close <func>
+└── {...} <struct>
+
+
+-- out/exprtree/#def --
+#def: {}
+
+{} <struct>
+
+
+-- out/exprtree/tmplstruct --
+tmplstruct: [string]: int
+
+{...} <struct<int>>
+
+
+-- out/exprtree/tmplstruct2 --
+tmplstruct2: [string]: close({})
+
+{...} <struct<struct>>
+
+

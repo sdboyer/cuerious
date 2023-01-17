@@ -1,0 +1,37 @@
+-- in.cue --
+empty: []
+open: [...]
+opentyped: [...string]
+typedelem: [string]
+opentypedelem: [int, ...string]
+
+-- out/exprtree/empty --
+empty: []
+
+[0] <list>
+
+
+-- out/exprtree/open --
+open: [...]
+
+[>=0] <list<_>>
+
+
+-- out/exprtree/opentyped --
+opentyped: [...string]
+
+[>=0] <list<string>>
+
+
+-- out/exprtree/typedelem --
+typedelem: [string]
+
+[1] <list>
+
+
+-- out/exprtree/opentypedelem --
+opentypedelem: [int, ...string]
+
+[>=1] <list<string>>
+
+

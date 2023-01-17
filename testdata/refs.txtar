@@ -1,0 +1,28 @@
+-- in.cue --
+n1: string
+n2: n1
+n3: n2 | n1
+-- out/exprtree/n1 --
+n1: string
+
+<string>
+
+
+-- out/exprtree/n2 --
+n2: n1
+
+[ref]  n1 <string>
+└── <string>
+
+
+-- out/exprtree/n3 --
+n3: n2 | n1
+
+[|]  <string>
+├── [ref]  n2 <string>
+│   └── [ref]  n1 <string>
+│       └── <string>
+└── [ref]  n1 <string>
+    └── <string>
+
+

@@ -1,0 +1,37 @@
+-- in.cue --
+n1: int32
+n2: string
+n3: string | n1 | *n2
+-- out/exprtree/n1 --
+n1: int32
+
+[&]  <int>
+├── <int>
+├── [<=]  <number>
+│   └── 2147483647 <int>
+└── [>=]  <number>
+    └── -2147483648 <int>
+
+
+-- out/exprtree/n2 --
+n2: string
+
+<string>
+
+
+-- out/exprtree/n3 --
+n3: string | n1 | *n2
+
+[*]  <string>
+├── [ref]  *n2 <string>
+│   └── <string>
+├── <string>
+└── [ref]  n1 <int>
+    └── [&]  <int>
+        ├── <int>
+        ├── [<=]  <number>
+        │   └── 2147483647 <int>
+        └── [>=]  <number>
+            └── -2147483648 <int>
+
+

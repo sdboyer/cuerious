@@ -1,0 +1,67 @@
+-- in.cue --
+"string": string
+"number": number
+"int": int
+"int32": int32
+"float64": float64
+"bytes": bytes
+"bool" : bool
+"null": null
+
+-- out/exprtree/string --
+"string": string
+
+<string>
+
+
+-- out/exprtree/number --
+"number": number
+
+<number>
+
+
+-- out/exprtree/int --
+"int": int
+
+<int>
+
+
+-- out/exprtree/int32 --
+"int32": int32
+
+[&]  <int>
+├── <int>
+├── [<=]  <number>
+│   └── 2147483647 <int>
+└── [>=]  <number>
+    └── -2147483648 <int>
+
+
+-- out/exprtree/float64 --
+"float64": float64
+
+[&]  <number>
+├── [<=]  <number>
+│   └── 1.7976931348... <float>
+└── [>=]  <number>
+    └── -1.797693134... <float>
+
+
+-- out/exprtree/bytes --
+"bytes": bytes
+
+<bytes>
+
+
+-- out/exprtree/bool --
+"bool": bool
+
+<bool>
+
+
+-- out/exprtree/null --
+"null": null
+
+null <null>
+
+

@@ -1,0 +1,11 @@
+-- in.cue --
+"struct": {} | *{ field: "foo" }
+
+-- out/exprtree/struct --
+"struct": {} | *{field: "foo"}
+
+[*]  <struct>
+├── *{...} <struct>
+└── {...} <struct>
+
+
