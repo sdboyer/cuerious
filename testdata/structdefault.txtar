@@ -4,8 +4,9 @@
 -- out/exprtree/struct --
 "struct": {} | *{field: "foo"}
 
-[*]  <struct>
-├── *{...} <struct>
-└── {...} <struct>
+<struct>
+├── [*]  <struct>
+│   └── <struct> *{...}
+└── <struct> {...}
 
 

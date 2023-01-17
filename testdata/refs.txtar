@@ -6,23 +6,26 @@ n3: n2 | n1
 n1: string
 
 <string>
+└── <string>
 
 
 -- out/exprtree/n2 --
 n2: n1
 
-[ref]  n1 <string>
-└── <string>
+<string> n1
+└── [ref]  <string> n1
+    └── <string>
 
 
 -- out/exprtree/n3 --
 n3: n2 | n1
 
-[|]  <string>
-├── [ref]  n2 <string>
-│   └── [ref]  n1 <string>
-│       └── <string>
-└── [ref]  n1 <string>
-    └── <string>
+<string>
+└── [|]  <string>
+    ├── [ref]  <string> n2
+    │   └── [ref]  <string> n1
+    │       └── <string>
+    └── [ref]  <string> n1
+        └── <string>
 
 

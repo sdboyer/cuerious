@@ -12,56 +12,60 @@
 "string": string
 
 <string>
+└── <string>
 
 
 -- out/exprtree/number --
 "number": number
 
 <number>
+└── <number>
 
 
 -- out/exprtree/int --
 "int": int
 
 <int>
+└── <int>
 
 
 -- out/exprtree/int32 --
 "int32": int32
 
-[&]  <int>
-├── <int>
-├── [<=]  <number>
-│   └── 2147483647 <int>
-└── [>=]  <number>
-    └── -2147483648 <int>
+<int>
+└── [&]  <int>
+    ├── <int>
+    ├── <int> 2147483647
+    └── <int> -2147483648
 
 
 -- out/exprtree/float64 --
 "float64": float64
 
-[&]  <number>
-├── [<=]  <number>
-│   └── 1.7976931348... <float>
-└── [>=]  <number>
-    └── -1.797693134... <float>
+<number>
+└── [&]  <number>
+    ├── <float> 1.7976931348...
+    └── <float> -1.797693134...
 
 
 -- out/exprtree/bytes --
 "bytes": bytes
 
 <bytes>
+└── <bytes>
 
 
 -- out/exprtree/bool --
 "bool": bool
 
 <bool>
+└── <bool>
 
 
 -- out/exprtree/null --
 "null": null
 
-null <null>
+<null> null
+└── <null> null
 
 

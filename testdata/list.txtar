@@ -8,30 +8,35 @@ opentypedelem: [int, ...string]
 -- out/exprtree/empty --
 empty: []
 
-[0] <list>
+<list> [0]
+└── <list> [0]
 
 
 -- out/exprtree/open --
 open: [...]
 
-[>=0] <list<_>>
+<list<_>> [>=0]
+└── <list<_>> [>=0]
 
 
 -- out/exprtree/opentyped --
 opentyped: [...string]
 
-[>=0] <list<string>>
+<list<string>> [>=0]
+└── <list<string>> [>=0]
 
 
 -- out/exprtree/typedelem --
 typedelem: [string]
 
-[1] <list>
+<list> [1]
+└── <list> [1]
 
 
 -- out/exprtree/opentypedelem --
 opentypedelem: [int, ...string]
 
-[>=1] <list<string>>
+<list<string>> [>=1]
+└── <list<string>> [>=1]
 
 

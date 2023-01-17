@@ -11,7 +11,8 @@ tmplstruct2: [string]: close({})
 -- out/exprtree/emptystruct --
 emptystruct: {}
 
-{...} <struct>
+<struct> {...}
+└── <struct> {...}
 
 
 -- out/exprtree/nonemptystruct --
@@ -19,32 +20,37 @@ nonemptystruct: {
 	foo: string
 }
 
-{...} <struct>
+<struct> {...}
+└── <struct> {...}
 
 
 -- out/exprtree/closestruct --
 closestruct: close({})
 
-[()]  {} <struct>
-├── close <func>
-└── {...} <struct>
+<struct> {}
+└── [()]  <struct> {}
+    ├── <func> close
+    └── <struct> {...}
 
 
 -- out/exprtree/#def --
 #def: {}
 
-{} <struct>
+<struct> {}
+└── <struct> {}
 
 
 -- out/exprtree/tmplstruct --
 tmplstruct: [string]: int
 
-{...} <struct<int>>
+<struct<int>> {...}
+└── <struct<int>> {...}
 
 
 -- out/exprtree/tmplstruct2 --
 tmplstruct2: [string]: close({})
 
-{...} <struct<struct>>
+<struct<struct>> {...}
+└── <struct<struct>> {...}
 
 

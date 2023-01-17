@@ -24,8 +24,8 @@ type ExprNode struct {
 	//   - Is the return from calling dfault() on the parent cue.Value
 	//   - Is the return from calling cue.Dereference() on the parent cue.Value
 	parent *ExprNode
-	// The cue.Value of this node in the expression tree.
-	Self cue.Value
+	// The cue.Value corresponding to this node in the expression tree.
+	V cue.Value
 
 	// The op produced from calling Expr() on Self.
 	// TODO remove, can just call Expr
@@ -82,14 +82,14 @@ func exprTree(v cue.Value, m map[cue.Value]*ExprNode) *ExprNode {
 	_, path := v.ReferencePath()
 
 	n := &ExprNode{
-		op:   op,
-		Self: v,
+		op: op,
+		V:  v,
 	}
 
 	var doargs, dodefault bool
 	switch v.IncompleteKind() {
 	case cue.ListKind:
-		dodefault = hasDef && !v.Equals(dv)
+		dodefault = hasDef && !v.Equals(dv) && v != dv
 		doargs = op != cue.NoOp || dodefault
 	case cue.StructKind:
 		doargs = op != cue.NoOp || hasDef
@@ -156,39 +156,29 @@ func (n *ExprNode) String() string {
 
 func (n *ExprNode) treeprint(tp treeprint.Tree) {
 	if n.isLeaf() {
-		if !n.isRoot() {
-			tp.AddNode(n.selfString())
-			// tp.AddMetaNode(n.opString(), n.selfString())
-		}
-		return
-	}
-
-	var b treeprint.Tree
-	if n.isRoot() {
-		b = tp
-		tp.SetMetaValue(n.opString())
-	} else {
-		b = tp.AddMetaBranch(n.opString(), n.selfString())
+		tp.AddNode(n.selfString())
 	}
 
 	if n.dfault != nil {
-		// n.dfault.treeprint(b.AddMetaBranch("*", ""))
-		n.dfault.treeprint(b)
+		tp2 := tp.AddMetaBranch(n.opString(), n.selfString())
+		n.dfault.treeprint(tp2)
 	}
 	if n.ref != nil {
-		// n.ref.treeprint(b.AddMetaBranch(fmt.Sprintf("ref:%s", n.refpath), n.ref.kindStr()))
-		// n.ref.treeprint(tp.AddMetaBranch(fmt.Sprintf("ref:%s", n.refpath), ""))
-		// n.ref.treeprint(b.AddMetaBranch("<ref>", n.refpath.String()))
-		n.ref.treeprint(b)
+		tp2 := tp.AddMetaBranch(n.opString(), n.selfString())
+		n.ref.treeprint(tp2)
+	}
+
+	if len(n.children) > 1 {
+		tp = tp.AddMetaBranch(n.op.String(), n.selfString())
 	}
 	for _, cn := range n.children {
-		cn.treeprint(b)
+		cn.treeprint(tp)
 	}
 }
 
 func (n *ExprNode) selfString() string {
 	strs := make([]string, 0, 3)
-	for _, str := range []string{n.valStr(), n.kindStr(), n.attrStr()} {
+	for _, str := range []string{n.kindStr(), n.valStr(), n.attrStr()} {
 		if len(str) > 0 {
 			strs = append(strs, str)
 		}
@@ -228,25 +218,25 @@ func (n *ExprNode) valStr() string {
 	case n.dfault != nil:
 		return ""
 	default:
-		switch n.Self.Kind() {
+		switch n.V.Kind() {
 		case cue.BottomKind:
 			// Ugh, Kind() of a list with non-concrete elements is bottom
-			if n.Self.IncompleteKind() != cue.ListKind {
+			if n.V.IncompleteKind() != cue.ListKind {
 				return ""
 			}
 			fallthrough
 		case cue.ListKind:
-			fmt.Fprintf(b, "[%s]", strings.TrimPrefix(fmt.Sprint(n.Self.Len()), "int & "))
+			fmt.Fprintf(b, "[%s]", strings.TrimPrefix(fmt.Sprint(n.V.Len()), "int & "))
 		case cue.StructKind:
 			fmt.Fprint(b, "{")
 			// TODO Len()'s docs say it reports a value for structs, but apparently not?
 			// fmt.Fprint(b, n.Self.Len())
-			if n.Self.Allows(cue.AnyString) {
+			if n.V.Allows(cue.AnyString) {
 				fmt.Fprint(b, "...")
 			}
 			fmt.Fprint(b, "}")
 		default:
-			str := fmt.Sprint(n.Self)
+			str := fmt.Sprint(n.V)
 			if len(str) > 12 {
 				str = str[:12] + "..."
 			}
@@ -261,11 +251,11 @@ func (n *ExprNode) kindStr() string {
 	var v cue.Value
 	switch {
 	case n.ref != nil:
-		v = n.ref.Self
+		v = n.ref.V
 	case n.dfault != nil:
-		v = n.dfault.Self
+		v = n.dfault.V
 	default:
-		v = n.Self
+		v = n.V
 	}
 
 	var pk func(pv cue.Value) string
@@ -296,7 +286,7 @@ func (n *ExprNode) kindStr() string {
 }
 
 func (n *ExprNode) attrStr() string {
-	attrs := n.Self.Attributes(cue.ValueAttr)
+	attrs := n.V.Attributes(cue.ValueAttr)
 	var buf bytes.Buffer
 	for _, attr := range attrs {
 		fmt.Fprintf(&buf, " @%s(%s)", attr.Name(), attr.Contents())

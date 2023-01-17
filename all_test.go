@@ -35,7 +35,7 @@ func TestDumpExprTree(t *testing.T) {
 		for iter.Next() {
 			w := tc.Writer(iter.Selector().String())
 			n := cuerious.ExprTree(iter.Value())
-			sb, err := format.Node(n.Self.Source())
+			sb, err := format.Node(n.V.Source())
 			if err != nil {
 				t.Fatalf("could not format node: %s", err)
 			}

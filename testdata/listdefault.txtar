@@ -5,17 +5,20 @@ closed: [] | *["foo"]
 -- out/exprtree/open --
 open: [...] | *["foo"]
 
-[*]  <list>
-├── *[1] <list>
-└── [>=0] <list<_>>
+<list>
+├── [*]  <list>
+│   └── <list> *[1]
+└── <list<_>> [>=0]
 
 
 -- out/exprtree/closed --
 closed: [] | *["foo"]
 
-[*]  <list>
-├── *[1] <list>
-├── [0] <list>
-└── [1] <list>
+<list>
+├── [*]  <list>
+│   └── <list> *[1]
+└── [|]  <list>
+    ├── <list> [0]
+    └── <list> [1]
 
 

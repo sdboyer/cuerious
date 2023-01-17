@@ -5,33 +5,33 @@ n3: string | n1 | *n2
 -- out/exprtree/n1 --
 n1: int32
 
-[&]  <int>
-├── <int>
-├── [<=]  <number>
-│   └── 2147483647 <int>
-└── [>=]  <number>
-    └── -2147483648 <int>
+<int>
+└── [&]  <int>
+    ├── <int>
+    ├── <int> 2147483647
+    └── <int> -2147483648
 
 
 -- out/exprtree/n2 --
 n2: string
 
 <string>
+└── <string>
 
 
 -- out/exprtree/n3 --
 n3: string | n1 | *n2
 
-[*]  <string>
-├── [ref]  *n2 <string>
-│   └── <string>
-├── <string>
-└── [ref]  n1 <int>
-    └── [&]  <int>
-        ├── <int>
-        ├── [<=]  <number>
-        │   └── 2147483647 <int>
-        └── [>=]  <number>
-            └── -2147483648 <int>
+<string>
+├── [*]  <string>
+│   └── [ref]  <string> *n2
+│       └── <string>
+└── [|]  <string>
+    ├── <string>
+    └── [ref]  <int> n1
+        └── [&]  <int>
+            ├── <int>
+            ├── <int> 2147483647
+            └── <int> -2147483648
 
 
